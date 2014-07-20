@@ -114,7 +114,7 @@ HRESULT _CreateShortcutIfNotExists(LPWSTR path, rsize_t size)
     {
         wchar_t pathToExe[MAX_PATH];
         DWORD written = GetModuleFileNameEx(GetCurrentProcess(), nullptr, pathToExe, ARRAYSIZE(pathToExe));
-        HRESULT hr = written > 0 ? S_OK : E_FAIL;
+        hr = written > 0 ? S_OK : E_FAIL;
         if (SUCCEEDED(hr))
         {
             ComPtr<IShellLink> shellLink;
