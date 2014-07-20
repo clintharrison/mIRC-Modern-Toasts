@@ -13,6 +13,14 @@
 #define MIRC_KEEP_DLL 0
 #define MIRC_UNLOAD_DLL 1
 
+#define WM_MCOMMAND WM_USER + 200
+#define WM_MEVALUATE WM_USER + 201
+
+#define MIRC_SM_EDITBOX 1
+#define MIRC_SM_EDITBOX_PLAIN 2
+#define MIRC_SM_FLOOD_PROTECTION 4
+#define MIRC_SM_UNICODE 8
+
 typedef struct {
    DWORD mVersion;
    HWND mHwnd;

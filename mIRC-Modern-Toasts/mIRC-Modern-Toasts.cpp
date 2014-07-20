@@ -84,7 +84,7 @@ void mIRCEvaluate(LPWSTR command)
     // arguments, and use a dot to silence any errors (in case the alias does
     // not exist).
     wsprintf(pFileMapView, L"//.%s", command);
-    SendMessage(hWndmIRC, WM_USER + 200, 8, 0);
+    SendMessage(hWndmIRC, WM_MCOMMAND, MIRC_SM_UNICODE, 0);
 }
 
 HRESULT CreateShortcut()
