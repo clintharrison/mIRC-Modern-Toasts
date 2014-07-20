@@ -19,17 +19,17 @@ using namespace Platform;
 
 HWND hWndmIRC;
 HANDLE hFileMap;
-LPWSTR pFileMapView;
+PWSTR pFileMapView;
 
-LPWSTR defaultAppID;
-LPWSTR pszAppID;
+PWSTR defaultAppID;
+PWSTR pszAppID;
 
 String^ line1;
 String^ line2;
 
 HRESULT CreateShortcut();
-HRESULT _CreateShortcutIfNotExists(LPWSTR path, rsize_t size);
-HRESULT _SetAppIDOnShortcut(LPWSTR path);
+HRESULT _CreateShortcutIfNotExists(PWSTR path, rsize_t size);
+HRESULT _SetAppIDOnShortcut(PWSTR path);
 
 void __stdcall LoadDll(LOADINFO *loadInfo)
 {
@@ -52,7 +52,7 @@ void __stdcall LoadDll(LOADINFO *loadInfo)
         MIRC_FILE_MAP_SIZE,
         L"mIRC"
     );
-    pFileMapView = (LPWSTR)MapViewOfFile(
+    pFileMapView = (PWSTR)MapViewOfFile(
         hFileMap,
         FILE_MAP_ALL_ACCESS,
         0,
@@ -77,7 +77,7 @@ int __stdcall UnloadDll(int mTimeout)
     }
 }
 
-void mIRCEvaluate(LPWSTR command)
+void mIRCEvaluate(PWSTR command)
 {
     // This message processes the string from the file exactly as would be done
     // by the editbox. Use two slashes to evaluate the command and any
@@ -105,7 +105,7 @@ HRESULT CreateShortcut()
     return hr;
 }
 
-HRESULT _CreateShortcutIfNotExists(LPWSTR path, rsize_t size)
+HRESULT _CreateShortcutIfNotExists(PWSTR path, rsize_t size)
 {
     DWORD attributes = GetFileAttributes(path);
     bool exists = attributes < 0xFFFFFFF;
@@ -141,7 +141,7 @@ HRESULT _CreateShortcutIfNotExists(LPWSTR path, rsize_t size)
     return hr;
 }
 
-HRESULT _SetAppIDOnShortcut(LPWSTR path)
+HRESULT _SetAppIDOnShortcut(PWSTR path)
 {
     ComPtr<IPropertyStore> store;
     HRESULT hr = SHGetPropertyStoreFromParsingName(path, nullptr, GPS_READWRITE, IID_PPV_ARGS(&store));
