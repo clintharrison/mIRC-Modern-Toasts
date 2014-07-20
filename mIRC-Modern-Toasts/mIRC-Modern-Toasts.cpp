@@ -170,7 +170,7 @@ SetLine1(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
     wchar_t *wstr = new wchar_t[num_wchar];
     MultiByteToWideChar(CP_UTF8, 0, data, -1, wstr, num_wchar);
     line1 = ref new String(wstr);
-
+    delete[] wstr;
     return MIRC_RETURN_CONTINUE;
 }
 
@@ -183,7 +183,7 @@ SetLine2(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
     wchar_t *wstr = new wchar_t[num_wchar];
     MultiByteToWideChar(CP_UTF8, 0, data, -1, wstr, num_wchar);
     line2 = ref new String(wstr);
-
+    delete[] wstr;
     return MIRC_RETURN_CONTINUE;
 }
 
