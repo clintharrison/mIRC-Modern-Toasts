@@ -80,6 +80,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>Synchronization.lib;Shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>mIRC-Modern-Toasts.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -87,6 +88,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mIRC-Modern-Toasts.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="mIRC-Modern-Toasts.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

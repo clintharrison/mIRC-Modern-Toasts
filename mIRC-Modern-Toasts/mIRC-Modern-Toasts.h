@@ -3,7 +3,7 @@
 
 #include <Windows.h>
 
-#define MIRCAPI EXTERN_C int STDAPICALLTYPE
+#define MIRCAPI int STDAPICALLTYPE
 
 #define MIRC_RETURN_HALT 0
 #define MIRC_RETURN_CONTINUE 1
@@ -55,23 +55,18 @@ typedef struct {
  * . 2 - the DLL filled data with a command mIRC should perform
  * . 3 - the DLL filled data with a result for $dll to return
  */
-#pragma comment(linker, "/EXPORT:LoadDll=_LoadDll@4")
-extern "C" void __stdcall LoadDll(LOADINFO *loadInfo);
+void __stdcall LoadDll(LOADINFO *loadInfo);
 
-#pragma comment(linker, "/EXPORT:UnloadDll=_UnloadDll@4")
-extern "C" int __stdcall UnloadDll(int mTimeout);
+int __stdcall UnloadDll(int mTimeout);
 
-#pragma comment(linker, "/EXPORT:ShowToast=_ShowToast@24")
 MIRCAPI
 ShowToast(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
     BOOL nopause);
 
-#pragma comment(linker, "/EXPORT:SetLine1=_SetLine1@24")
 MIRCAPI
 SetLine1(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
     BOOL nopause);
 
-#pragma comment(linker, "/EXPORT:SetLine2=_SetLine2@24")
 MIRCAPI
 SetLine2(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
     BOOL nopause);

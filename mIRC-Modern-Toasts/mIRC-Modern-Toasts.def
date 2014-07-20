@@ -1,0 +1,8 @@
+LIBRARY mIRC-Modern-Toasts
+
+EXPORTS
+LoadDll
+UnloadDll
+SetLine1
+SetLine2
+ShowToast
