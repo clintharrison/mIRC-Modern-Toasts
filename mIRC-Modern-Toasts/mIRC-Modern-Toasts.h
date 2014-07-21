@@ -70,3 +70,7 @@ SetLine1(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
 MIRCAPI
 SetLine2(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
     BOOL nopause);
+
+MIRCAPI
+GetAppID(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
+    BOOL nopause);

@@ -6,3 +6,4 @@ UnloadDll
 SetLine1
 SetLine2
 ShowToast
+GetAppID
