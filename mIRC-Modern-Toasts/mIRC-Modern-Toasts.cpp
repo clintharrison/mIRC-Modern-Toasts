@@ -1,12 +1,12 @@
 #include "mIRC-Modern-Toasts.h"
 
+#include <string>
 #include <Psapi.h>
 #include <objbase.h>
 #include <ShlObj.h>
 #include <ShObjIdl.h>
 #include <propvarutil.h>
 #include <propkey.h>
-
 #include <roapi.h>
 #include <wrl\client.h>
 
@@ -20,7 +20,7 @@ using namespace Platform;
 
 HWND hWndmIRC;
 HANDLE hFileMap;
-PWSTR pFileMapView;
+PWSTR pszFileMapView;
 
 PWSTR pszDefaultAppID;
 PWSTR pszAppID;
@@ -31,10 +31,10 @@ String^ line2;
 void InitAppUserModelID();
 HRESULT TryFindAppUserModelID();
 HRESULT CreateShortcut();
-HRESULT _CreateShortcut(PWSTR path, rsize_t size);
-HRESULT _SetAppIDOnShortcut(PWSTR path);
+HRESULT _CreateShortcut(_In_ PCWSTR path);
+HRESULT _SetAppIDOnShortcut(_In_ PCWSTR path);
 
-void __stdcall LoadDll(LOADINFO *loadInfo)
+void __stdcall LoadDll(_Inout_ LOADINFO *loadInfo)
 {
     pszDefaultAppID = L"mIRC.mIRC";
     InitAppUserModelID();
@@ -47,19 +47,21 @@ void __stdcall LoadDll(LOADINFO *loadInfo)
         0,
         MIRC_FILE_MAP_SIZE,
         L"mIRC"
-    );
-    pFileMapView = (PWSTR)MapViewOfFile(
-        hFileMap,
-        FILE_MAP_ALL_ACCESS,
-        0,
-        0,
-        MIRC_FILE_MAP_SIZE
-    );
+        );
+    if (hFileMap) {
+        pszFileMapView = static_cast<PWSTR>(MapViewOfFile(
+            hFileMap,
+            FILE_MAP_ALL_ACCESS,
+            0,
+            0,
+            MIRC_FILE_MAP_SIZE
+            ));
+    }
     hWndmIRC = loadInfo->mHwnd;
     loadInfo->mKeep = true;
 }
 
-int __stdcall UnloadDll(int mTimeout)
+int __stdcall UnloadDll(_In_ int mTimeout)
 {
     if (mTimeout == 1)
     {
@@ -67,19 +69,20 @@ int __stdcall UnloadDll(int mTimeout)
     }
     else
     {
-        UnmapViewOfFile(pFileMapView);
+        UnmapViewOfFile(pszFileMapView);
         CloseHandle(hFileMap);
+        CoTaskMemFree(pszAppID);
         return MIRC_UNLOAD_DLL;
     }
 }
 
-void mIRCEvaluate(PWSTR command)
+void mIRCEvaluate(_In_ PCWSTR command)
 {
     // This message processes the string from the file exactly as would be done
     // by the editbox. Use two slashes to evaluate the command and any
     // arguments, and use a dot to silence any errors (in case the alias does
     // not exist).
-    wsprintf(pFileMapView, L"//.%s", command);
+    wsprintf(pszFileMapView, L"//.%s", command);
     SendMessage(hWndmIRC, WM_MCOMMAND, MIRC_SM_UNICODE, 0);
 }
 
@@ -96,16 +99,14 @@ void InitAppUserModelID()
 
 HRESULT TryFindAppUserModelID()
 {
-    HRESULT hr;
     bool foundShortcutWithAppID = false;
-
-    WCHAR pszExePath[MAX_PATH];
+    wchar_t pszExePath[MAX_PATH];
     DWORD written = GetModuleFileNameEx(GetCurrentProcess(), nullptr, pszExePath, ARRAYSIZE(pszExePath));
-    hr = written > 0 ? S_OK : E_FAIL;
+    HRESULT hr = written > 0 ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
         ComPtr<IShellItem> spApps;
-        hr = SHGetKnownFolderItem(FOLDERID_AppsFolder, (KNOWN_FOLDER_FLAG)0, nullptr, IID_PPV_ARGS(&spApps));
+        hr = SHGetKnownFolderItem(FOLDERID_AppsFolder, static_cast<KNOWN_FOLDER_FLAG>(0), nullptr, IID_PPV_ARGS(&spApps));
         if (SUCCEEDED(hr))
         {
             ComPtr<IEnumShellItems> spEnum;
@@ -113,7 +114,7 @@ HRESULT TryFindAppUserModelID()
             if (SUCCEEDED(hr))
             {
                 for (ComPtr<IShellItem> spAppItem;
-                    spEnum->Next(1, &spAppItem, nullptr) == S_OK;
+                    !foundShortcutWithAppID && spEnum->Next(1, &spAppItem, nullptr) == S_OK;
                     spAppItem.Reset())
                 {
                     ComPtr<IShellItem2> spAppItem2;
@@ -124,30 +125,20 @@ HRESULT TryFindAppUserModelID()
                         hr = spAppItem2->GetString(PKEY_Link_TargetParsingPath, &pszTargetPath);
                         // an app may not necessarily have a target, and this will fail.
                         // if that's the case, it's certainly not the one we're looking for
-                        if (FAILED(hr)) {
-                            continue;
-                        }
-
-                        int pathComparison = CompareString(
-                            LOCALE_USER_DEFAULT,
-                            NORM_IGNORECASE,
-                            pszExePath, lstrlen(pszExePath),
-                            pszTargetPath, lstrlen(pszTargetPath)
-                        );
-                        CoTaskMemFree(pszTargetPath);
-
-                        if (pathComparison == CSTR_EQUAL) {
-                            foundShortcutWithAppID = true;
-                            hr = spAppItem2->GetString(PKEY_AppUserModel_ID, &pszAppID);
-                            break;
+                        if (SUCCEEDED(hr)) {
+                            if (CompareStringOrdinal(pszExePath, wcslen(pszExePath), pszTargetPath, wcslen(pszTargetPath), TRUE) == CSTR_EQUAL) {
+                                foundShortcutWithAppID = true;
+                                hr = spAppItem2->GetString(PKEY_AppUserModel_ID, &pszAppID);
+                            }
+                            CoTaskMemFree(pszTargetPath);
                         }
                     }
                 }
-                if (!foundShortcutWithAppID) {
-                    hr = E_FAIL;
-                }
             }
         }
+    }
+    if (!foundShortcutWithAppID) {
+        hr = E_FAIL;
     }
     return hr;
 }
@@ -155,24 +146,24 @@ HRESULT TryFindAppUserModelID()
 HRESULT CreateShortcut()
 {
     HRESULT hr;
-    wchar_t path[MAX_PATH];
-    DWORD written = GetEnvironmentVariable(L"APPDATA", path, MAX_PATH);
+    wchar_t pszShortcutPath[MAX_PATH];
+    DWORD written = GetEnvironmentVariable(L"APPDATA", pszShortcutPath, ARRAYSIZE(pszShortcutPath));
     hr = written > 0 ? S_OK : E_INVALIDARG;
     if (SUCCEEDED(hr)) {
-        errno_t concat = wcscat_s(path, ARRAYSIZE(path),
+        errno_t concat = wcscat_s(pszShortcutPath, ARRAYSIZE(pszShortcutPath),
             L"\\Microsoft\\Windows\\Start Menu\\Programs\\mIRC with Modern Toasts.lnk");
         hr = concat == 0 ? S_OK : E_INVALIDARG;
         if (SUCCEEDED(hr)) {
-            hr = _CreateShortcut(path, ARRAYSIZE(path));
+            hr = _CreateShortcut(pszShortcutPath);
             if (SUCCEEDED(hr)) {
-                hr = _SetAppIDOnShortcut(path);
+                hr = _SetAppIDOnShortcut(pszShortcutPath);
             }
         }
     }
     return hr;
 }
 
-HRESULT _CreateShortcut(PWSTR path, rsize_t size)
+HRESULT _CreateShortcut(_In_ PCWSTR path)
 {
     HRESULT hr;
     wchar_t pathToExe[MAX_PATH];
@@ -203,7 +194,7 @@ HRESULT _CreateShortcut(PWSTR path, rsize_t size)
     return hr;
 }
 
-HRESULT _SetAppIDOnShortcut(PWSTR path)
+HRESULT _SetAppIDOnShortcut(_In_ PCWSTR path)
 {
     ComPtr<IPropertyStore> store;
     HRESULT hr = SHGetPropertyStoreFromParsingName(path, nullptr, GPS_READWRITE, IID_PPV_ARGS(&store));
@@ -225,11 +216,16 @@ HRESULT _SetAppIDOnShortcut(PWSTR path)
 }
 
 MIRCAPI
-SetLine1(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
-    BOOL nopause)
+SetLine1(
+    _In_ HWND hMircWnd,
+    _In_ HWND hActiveWnd,
+    _Inout_ char *data,
+    _Inout_ char *params,
+    _In_ BOOL show,
+    _In_ BOOL nopause)
 {
     int num_wchar = MultiByteToWideChar(CP_UTF8, 0, data, -1, nullptr, 0);
-    WCHAR *wstr = new WCHAR[num_wchar];
+    wchar_t *wstr = new wchar_t[num_wchar];
     MultiByteToWideChar(CP_UTF8, 0, data, -1, wstr, num_wchar);
     line1 = ref new String(wstr);
     delete[] wstr;
@@ -237,12 +233,17 @@ SetLine1(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
 }
 
 MIRCAPI
-SetLine2(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
-    BOOL nopause)
+SetLine2(
+    _In_ HWND hMircWnd,
+    _In_ HWND hActiveWnd,
+    _Inout_ char *data,
+    _Inout_ char *params,
+    _In_ BOOL show,
+    _In_ BOOL nopause)
 {
     // we're going to ignore the copy-paste here ok?
     int num_wchar = MultiByteToWideChar(CP_UTF8, 0, data, -1, nullptr, 0);
-    WCHAR *wstr = new WCHAR[num_wchar];
+    wchar_t *wstr = new wchar_t[num_wchar];
     MultiByteToWideChar(CP_UTF8, 0, data, -1, wstr, num_wchar);
     line2 = ref new String(wstr);
     delete[] wstr;
@@ -250,8 +251,13 @@ SetLine2(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
 }
 
 MIRCAPI
-ShowToast(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
-    BOOL nopause)
+ShowToast(
+    _In_ HWND hMircWnd,
+    _In_ HWND hActiveWnd,
+    _Inout_ char *data,
+    _Inout_ char *params,
+    _In_ BOOL show,
+    _In_ BOOL nopause)
 {
     // called with $dllrun (ie in a new thread) so we must initialize COM ourselves
     RoInitialize(RO_INIT_MULTITHREADED);
@@ -263,47 +269,47 @@ ShowToast(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
     auto toast = ref new ToastNotification(toastXml);
 
     bool isWaiting = true;
-    bool trueValue = true;
     toast->Activated += ref new TypedEventHandler<ToastNotification^, Object^>(
         [&isWaiting](ToastNotification^ toast, Object^ result) {
             mIRCEvaluate(L"mmt-toast-activate-callback");
             isWaiting = false;
             WakeByAddressAll(&isWaiting);
-        }
+    }
     );
     toast->Dismissed += ref new TypedEventHandler<ToastNotification^, ToastDismissedEventArgs^>(
         [&isWaiting](ToastNotification^ toast, ToastDismissedEventArgs^ e) {
             mIRCEvaluate(L"mmt-toast-dismiss-callback");
             isWaiting = false;
             WakeByAddressAll(&isWaiting);
-        }
+    }
     );
     toast->Failed += ref new TypedEventHandler<ToastNotification^, ToastFailedEventArgs^>(
         [&isWaiting](ToastNotification^ toast, ToastFailedEventArgs^ e) {
             mIRCEvaluate(L"mmt-toast-fail-callback");
             isWaiting = false;
             WakeByAddressAll(&isWaiting);
-        }
+    }
     );
     ToastNotificationManager::CreateToastNotifier(ref new String(pszAppID))->Show(toast);
 
+    bool trueValue = true;
     // wait so the thread stays alive so it can receive the toast events
-    while (isWaiting)
-    {
-        // wait indefinitely--if the user mouses over the notification it could
-        // be there for a very very long time
-        if (!WaitOnAddress(&isWaiting, &trueValue, sizeof(bool), -1)) {
-            break;
-        }
-    }
+    // wait indefinitely--if the user mouses over the notification it could
+    // be there for a very very long time
+    WaitOnAddress(&isWaiting, &trueValue, sizeof(isWaiting), INFINITE);
 
     RoUninitialize();
     return MIRC_RETURN_CONTINUE;
 }
 
 MIRCAPI
-GetAppID(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
-    BOOL nopause)
+GetAppID(
+    _In_ HWND hMircWnd,
+    _In_ HWND hActiveWnd,
+    _Inout_ char *data,
+    _Inout_ char *params,
+    _In_ BOOL show,
+    _In_ BOOL nopause)
 {
     wcstombs(data, pszAppID, 900);
     return MIRC_RETURN_STRING;

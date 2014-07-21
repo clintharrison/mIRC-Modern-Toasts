@@ -55,22 +55,46 @@ typedef struct {
  * . 2 - the DLL filled data with a command mIRC should perform
  * . 3 - the DLL filled data with a result for $dll to return
  */
-void __stdcall LoadDll(LOADINFO *loadInfo);
+void __stdcall LoadDll(_Inout_ LOADINFO *loadInfo);
 
-int __stdcall UnloadDll(int mTimeout);
-
-MIRCAPI
-ShowToast(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
-    BOOL nopause);
+int __stdcall UnloadDll(_In_ int mTimeout);
 
 MIRCAPI
-SetLine1(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
-    BOOL nopause);
+ShowToast(
+    _In_ HWND hMircWnd,
+    _In_ HWND hActiveWnd,
+    _Inout_ char *data,
+    _Inout_ char *params,
+    _In_ BOOL show,
+    _In_ BOOL nopause
+    );
 
 MIRCAPI
-SetLine2(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
-    BOOL nopause);
+SetLine1(
+    _In_ HWND hMircWnd,
+    _In_ HWND hActiveWnd,
+    _Inout_ char *data,
+    _Inout_ char *params,
+    _In_ BOOL show,
+    _In_ BOOL nopause
+    );
 
 MIRCAPI
-GetAppID(HWND hMircWnd, HWND hActiveWnd, char *data, char *params, BOOL show,
-    BOOL nopause);
+SetLine2(
+    _In_ HWND hMircWnd,
+    _In_ HWND hActiveWnd,
+    _Inout_ char *data,
+    _Inout_ char *params,
+    _In_ BOOL show,
+    _In_ BOOL nopause
+    );
+
+MIRCAPI
+GetAppID(
+    _In_ HWND hMircWnd,
+    _In_ HWND hActiveWnd,
+    _Inout_ char *data,
+    _Inout_ char *params,
+    _In_ BOOL show,
+    _In_ BOOL nopause
+    );
